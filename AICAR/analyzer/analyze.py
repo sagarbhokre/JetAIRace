@@ -1,7 +1,7 @@
 import os
 import cv2
 
-default_dataset_dir = os.getcwd()+'/../dataset/'
+default_dataset_dir = os.getcwd()+'/../road_following_A/apex/'
 
 def get_files_list(dataset_dir):
     files = []

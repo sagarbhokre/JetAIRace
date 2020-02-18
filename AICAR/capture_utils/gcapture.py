@@ -10,10 +10,13 @@ import subprocess
 from jetcam.csi_camera import CSICamera
 
 class JCamera:
-    def __init__(self, handle_keys = True):
+    def __init__(self, handle_keys = True, render = True):
         self.refPt = [(0,0)]
         self.dataset_dir = os.getcwd() + '/dataset'
         self.handle_keys = handle_keys
+        self.width = 224
+        self.height = 224
+        self.render = render
         self.init_gcamera()
 
     def gstreamer_pipeline(
@@ -45,7 +48,7 @@ class JCamera:
         )
 
     def init_gcamera(self):
-        self.camera = cv2.VideoCapture(self.gstreamer_pipeline(flip_method=0, display_width = 224, display_height = 224), cv2.CAP_GSTREAMER)
+        self.camera = cv2.VideoCapture(self.gstreamer_pipeline(flip_method=0, display_width = self.width, display_height = self.height), cv2.CAP_GSTREAMER)
         if self.camera.isOpened():
             print("Open camera success!")
         else:
@@ -59,7 +62,11 @@ class JCamera:
 
         while True:
             ret, self.image = self.camera.read()
-            cv2.imshow("CSI Camera feed", self.image)
+            if self.render:
+                h,w,c = self.image.shape
+                self.image = cv2.line(self.image, (0,int(h/2)), (w,int(h/2)), (0,255,0), 1)
+                cv2.imshow("CSI Camera feed", self.image)
+
             if self.handle_keys:
                 k = cv2.waitKey(33) & 0xFF
                 if k == 27 or k == ord('q'):
@@ -74,19 +81,30 @@ class JCamera:
             self.x = x
             self.y = y
             print(x,y)
-            image_overlay = copy.copy(self.image)
-            image_overlay = cv2.circle(image_overlay, (x, y), 8, (0, 255, 0), 3)
-            cv2.imshow("CSI Camera feed", image_overlay)
+            self.image_overlay = copy.copy(self.image)
+            self.image_overlay = cv2.circle(self.image_overlay, (x, y), 8, (0, 255, 0), 3)
+            cv2.imshow("CSI Camera feed", self.image_overlay)
             self.save_entry()
 
     def getFrame(self):
         ret, self.image = self.camera.read()
-        cv2.imshow("CSI Camera feed", self.image)
+        if self.render:
+            h,w,c = self.image.shape
+            self.image_overlay = copy.copy(self.image)
+            self.image_overlay = cv2.line(self.image_overlay, (0,int(h/2)), (w,int(h/2)),
+                                          (0,255,0), 1)
+            cv2.imshow("CSI Camera feed", self.image_overlay)
         return ret, self.image
+
+    def read(self):
+        return self.getFrame()
 
     def stop(self):
         self.camera.release()
         cv2.destroyAllWindows()
+
+    def release(self):
+        return self.stop()
 
     def save_entry(self):
         if not os.path.exists(self.dataset_dir):
