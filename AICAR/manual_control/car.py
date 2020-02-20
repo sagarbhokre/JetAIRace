@@ -9,6 +9,10 @@ class JCar:
         self.delta = 0.02
         self.init_car()
 
+    def control(self, s, t):
+        self.car.steering = s
+        self.car.throttle = t
+
     def handle_keys(self):
         k = cv2.waitKey(10) & 0xFF
         if(k == 81): # <- Key
@@ -19,7 +23,7 @@ class JCar:
             self.car.steering = self.steering_offset
         elif k == 82: # ^ key
             self.car.throttle = self.throttle_offset
-            time.sleep(0.3)
+            time.sleep(0.2)
         elif k == 84: # v key
             #throttle_offset -= 0.02
             self.throttle_offset -= 0.0

@@ -55,8 +55,9 @@ class JCamera:
             print("Failed to open camera")
             return
 
-        cv2.namedWindow("CSI Camera feed")
-        cv2.setMouseCallback("CSI Camera feed", self.click_and_save)
+        if self.render:
+            cv2.namedWindow("CSI Camera feed")
+            cv2.setMouseCallback("CSI Camera feed", self.click_and_save)
 
     def start(self):
 
