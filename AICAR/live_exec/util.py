@@ -8,7 +8,7 @@ import PIL.Image
 
 
 class JInfer:
-    def __init__(self):
+    def __init__(self, model_path=''):
         from .xy_dataset import XYDataset
         self.device = torch.device('cuda')
         self.mean = torch.Tensor([0.485, 0.456, 0.406]).cuda()
@@ -34,6 +34,9 @@ class JInfer:
             datasets[name] = XYDataset(TASK + '_' + name, CATEGORIES, TRANSFORMS, random_hflip=True)
 
         self.dataset = datasets[DATASETS[0]]
+
+        if(model_path != ''):
+            self.model_path = model_path
 
         self.load_model()
         self.init_trainer()
@@ -104,8 +107,7 @@ class JInfer:
         self.model.fc = torch.nn.Linear(512, output_dim)
         self.model = self.model.to(self.device)
 
-        print("Loading model: %s"%(self.model_path))
-        self.model.load_state_dict(torch.load(self.model_path))
+        self.load_modelfile(self.model_path)
 
     def init_trainer(self):
         self.optimizer = torch.optim.Adam(self.model.parameters())

@@ -25,11 +25,11 @@ class JCamera:
         capture_height=720,
         display_width=1280,
         display_height=720,
-        framerate=60,
+        framerate=10,
         flip_method=0,
     ):
         return (
-            "nvarguscamerasrc ! "
+            "nvarguscamerasrc maxperf=true ! "
             "video/x-raw(memory:NVMM), "
             "width=(int)%d, height=(int)%d, "
             "format=(string)NV12, framerate=(fraction)%d/1 ! "
@@ -63,7 +63,9 @@ class JCamera:
 
         while True:
             ret, self.image = self.camera.read()
-            if self.render:
+            if ret == False:
+                print("Capture failed")
+            if ret == True and self.render:
                 h,w,c = self.image.shape
                 self.image = cv2.line(self.image, (0,int(h/2)), (w,int(h/2)), (0,255,0), 1)
                 cv2.imshow("CSI Camera feed", self.image)

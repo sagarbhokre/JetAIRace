@@ -2,9 +2,11 @@ from inputs import get_gamepad
 import threading
 import time
 
+DEBUG = 0
 class JController(threading.Thread):
     def __init__(self):
         self.steering = 0.0
+        self.speed = 0.0
         self.throttle = 0.0
         self.engage_motors = False
         self.quit = False
@@ -20,27 +22,30 @@ class JController(threading.Thread):
         for event in events:
             #print("Type: ", event.ev_type, " Code: ",  event.code, " State: ", event.state)
 
-            if event.code == 'ABS_RX':
+            if event.code == 'ABS_Y': # Left flat direction control up-down
+                self.speed = -1.0*event.state/32768.0;
+                if DEBUG: print("[Controller] Speed: %.2f"%(self.speed))
+            if event.code == 'ABS_RX': # Right joystick left-right
                 self.steering = event.state/32768.0;
-                print("Steering: %.2f"%(self.steering))
-            if event.code == 'ABS_RY':
-                self.throttle = event.state/32768.0;
-                print("Throttle: %.2f"%(self.throttle))
-            if event.code == 'ABS_RZ':
+                if DEBUG: print("[Controller] Steering: %.2f"%(self.steering))
+            #if event.code == 'ABS_RY': # Right joystick up-down
+            #    self.throttle = event.state/32768.0;
+            #    print("[Controller] Throttle: %.2f"%(self.throttle))
+            if event.code == 'ABS_RZ': # RT
                 self.throttle = -1.0*event.state/255.0;
-                print("Throttle: %.2f"%(self.throttle))
-            if event.code == 'ABS_Z':
+                if DEBUG: print("[Controller] Throttle: %.2f"%(self.throttle))
+            if event.code == 'ABS_Z': # LT
                 self.throttle = event.state/255.0;
-                print("Throttle: %.2f"%(self.throttle))
-            if event.code == 'BTN_SOUTH':
+                if DEBUG: print("[Controller] Throttle: %.2f"%(self.throttle))
+            if event.code == 'BTN_SOUTH': # Green button 'A'
                 self.engage_motors = True
-                print("Engaging motors")
-            if event.code == 'BTN_EAST':
+                print("[Controller] Engaging motors")
+            if event.code == 'BTN_EAST': # Red button 'B'
                 self.engage_motors = False
-                print("Disengaging motors")
-            if event.code == 'BTN_SELECT':
+                print("[Controller] Disengaging motors")
+            if event.code == 'BTN_SELECT': # Back button
                 self.quit = True
-                print("Quit")
+                print("[Controller] Quit")
 
         if abs(self.steering) > 0.001 or self.throttle > 0.01:
             self.override = True
