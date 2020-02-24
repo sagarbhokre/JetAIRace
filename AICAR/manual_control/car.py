@@ -9,9 +9,14 @@ class JCar:
         self.delta = 0.02
         self.init_car()
 
+    def cap(self, x):
+        x = x if x < 1.0 else 1.0
+        x = x if x > -1.0 else -1.0
+        return x
+
     def control(self, s, t):
-        self.car.steering = s
-        self.car.throttle = t
+        self.car.steering = self.cap(s)
+        self.car.throttle = self.cap(t)
 
     def handle_keys(self):
         k = cv2.waitKey(10) & 0xFF

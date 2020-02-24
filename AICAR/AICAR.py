@@ -1,10 +1,12 @@
 #!/usr/bin/python3
 
+from util.utils import *
 from parser.util import *
 from analyzer.analyze import *
 from analyzer.annotate import JLabeler
 from live_exec.util import JInfer
 from manual_control.car import JCar
+from manual_control.touch_controller import JTouchSensor
 from manual_control.controller import JController
 from capture_utils.gcapture import JCamera
 import time
@@ -16,7 +18,6 @@ LIVEINFER_MODEL_PATH='models/livetrained_v1.pth'
 
 def cleanup(car):
     car.control(0.0, 0.0)
-
 
 if __name__ == '__main__':
     args = parse_args()
@@ -37,8 +38,11 @@ if __name__ == '__main__':
 
     elif args.mode == 'Run':
         infer = JInfer(model_path=INFER_MODEL_PATH)
+        print("Model loaded. Starting camera")
         camera = JCamera(handle_keys=False, render=args.render)
+        print("Camera started. Starting car")
         car = JCar()
+        print("Car started. Starting controller")
         controller = JController()
         controller.start()
 
@@ -111,22 +115,32 @@ if __name__ == '__main__':
         lblr.label_video(args.input_file)
     elif args.mode == 'LiveTrain':
         infer = JInfer(model_path=LIVEINFER_MODEL_PATH)
+        print("Model loaded. Starting camera")
         camera = JCamera(handle_keys=False, render=args.render)
+        print("Camera started. Starting car")
         car = JCar()
+        print("Car started. Starting controller")
         controller = JController(enable_prints=False)
         controller.start()
+        touchSensor = JTouchSensor(enable_prints=False)
 
         speed = 0.3
+        kb_angle = 0.0
+        c_angle = 0.0
         enable_prints = False
         curr_time = time.time()
         prev_time = time.time()
+        xm = 0.0
+        ym = 0.0
+        discrete_control = False
         while True:
             if controller.manual_mode == True:
                 car.control(controller.steering, controller.throttle)
+                #car.control(touchSensor.xc, touchSensor.yc * 0.4)
             else:
                 ret, img = camera.read()
                 x,y = infer.runFrame(img, renderFlag=args.render)
-                if controller.override:
+                if False and controller.override:
                     controller.override = False
                     x1 = x + controller.steering
                     x1 = x1 if x1 < 1.0 else 1.0
@@ -134,23 +148,60 @@ if __name__ == '__main__':
                     car.control(x1, speed + controller.throttle*0.3)
                     print("S: %.3f T: %.3f"%(x1, speed))
                     infer.trainFrame(img, x1, controller.throttle)
+                if True:
+                    xm = x + kb_angle + c_angle
+                    ym = speed #+ touchSensor.yc * 0.2
+                    if abs(controller.steering_discrete) > 0.0001:
+                        c_angle += (controller.steering_discrete * 0.33)
+                        controller.steering_discrete = 0.0
+                        x2, y2 = camera.unity_to_image(xm, ym)
+                        camera.save_entry(x2, y2)
+
+                    if discrete_control:
+                        car.control(xm, 0)
+                    else:
+                        car.control(xm, ym)
+
+                    if abs(x - xm) >= 0.33:
+                        car.control(xm, 0)
+                        infer.trainFrame(img, xm, ym)
+                        car.control(xm, ym)
+                        c_angle = 0.0
+                    #print("S: %.3f T: %.3f"%(x1, y1))
                 else:
                     car.control(x, speed)
             #infer.render(img, x, y)
             if enable_prints:
                 print('Steering: %0.2f  Throttle: %0.2f' % (x, y))
             #infer.live(camera)
-            k = cv2.waitKey(1) & 0xFF
+            #kb_angle = 0.0
+            k = cv2.waitKey(50) & 0xFF
             if k == ord('q') or k == 27 or controller.quit:
                 break
-            elif k == ord('d'):
+            elif k == ord('v'):
                 enable_prints = True
-            elif k == ord('w'):
+            elif k == ord('w'):# or k == 82:
                 speed += 0.02
                 print("Speed: %.2f"%(speed))
             elif k == ord('s'):
                 speed -= 0.02
                 print("Speed: %.2f"%(speed))
+            elif k == ord('d') or k == 83:
+                kb_angle = cap(kb_angle + 0.1)
+                print("S: T+Kb: %.2f + %.2f = %.2f"%(touchSensor.xc, kb_angle, touchSensor.xc + kb_angle) )
+            elif k == ord('a') or k == 81:
+                kb_angle = cap(kb_angle - 0.1)
+                print("S: T+Kb: %.2f + %.2f = %.2f"%(touchSensor.xc, kb_angle, touchSensor.xc + kb_angle) )
+            elif k == 82:
+                car.control(xm, speed)
+                time.sleep(0.2)
+                car.control(xm, 0)
+            elif k == ord('z'):
+                discrete_control = not discrete_control
+                print("Discrete control: ", discrete_control)
+            elif k == ord('c'):
+                x2, y2 = camera.unity_to_image(xm, ym)
+                camera.save_entry(x2, y2)
 
             if abs(controller.speed) >= 0.0001:
                 speed += controller.speed * 0.02
@@ -168,6 +219,7 @@ if __name__ == '__main__':
                 if (curr_time - prev_time) > 0.025:
                     print('Processing: %0.2f ms S: %.2f' % ((curr_time-prev_time)*1000, x))
                 prev_time = curr_time
+        infer.save_model('models/liveTraining_inter.pth')
         print("Stopping car")
         cleanup(car)
         print("Stopping camera")
@@ -179,3 +231,26 @@ if __name__ == '__main__':
         os.system(r'kill -9 `pgrep -f "python3 AICAR.py"`')
         print("After kill")
         exit(1)
+    elif args.mode == 'LiveRec':
+        camera = JCamera(handle_keys=False, render=args.render)
+        car = JCar()
+        controller = JController(enable_prints=False)
+        controller.start()
+        x = 0
+        y = 0
+        while True and not controller.quit:
+            if abs(controller.steering_discrete) > 0.0001:
+                x = cap(x + controller.steering_discrete * 0.33)
+                controller.steering_discrete = 0.0
+            if abs(controller.speed) > 0.0001:
+                y = cap(y + controller.speed*0.02)
+                controller.speed = 0.0
+
+            ret, img = camera.read()
+            x2, y2 = camera.unity_to_image(x, y)
+            camera.save_entry(x2, y2)
+            car.control(x,y)
+            time.sleep(0.1)
+        controller.raise_exception()
+        controller.kill()
+        camera.stop()

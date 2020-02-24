@@ -217,6 +217,7 @@ class JInfer:
                     loss_val = sum_loss / i
                     print("Epoch: %.2f/%d avg_loss:%.6f inst_loss: %.6f"%(epoch + progress_val, self.epochs, loss_val, float(loss)))
                 epoch += 1
+                self.save_model('models/trained_inter.pth')
 
                 if not is_training:
                     break

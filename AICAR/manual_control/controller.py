@@ -3,10 +3,16 @@ import threading
 import time
 import ctypes
 
+def cap(self, x):
+    x = x if x < 1.0 else 1.0
+    x = x if x > -1.0 else -1.0
+    return x
+
 DEBUG = 0
 class JController(threading.Thread):
     def __init__(self, enable_prints=True):
         self.steering = 0.0
+        self.steering_discrete = 0.0
         self.speed = 0.0
         self.throttle = 0.0
         self.manual_mode = False
@@ -70,15 +76,18 @@ class JController(threading.Thread):
         for event in events:
             #print("Type: ", event.ev_type, " Code: ",  event.code, " State: ", event.state)
 
-            if event.code == 'ABS_Y': # Left flat direction control up-down
+            if event.code == 'ABS_Y' and event.state != -129: # Left flat direction control up-down
                 self.speed = -1.0*event.state/32768.0;
                 if DEBUG: print("[Controller] Speed: %.2f"%(self.speed))
+            if event.code == 'ABS_X' and event.state != 128: # Left flat direction control left-right
+                self.steering_discrete = event.state/32768.0;
+                if DEBUG: print("[Controller] Steering_discrete: %.2f"%(self.steering_discrete))
             if event.code == 'ABS_RX': # Right joystick left-right
                 self.steering = event.state/32768.0;
                 if DEBUG: print("[Controller] Steering: %.2f"%(self.steering))
             #if event.code == 'ABS_RY': # Right joystick up-down
             #    self.throttle = event.state/32768.0;
-            #    print("[Controller] Throttle: %.2f"%(self.throttle))
+            #    print("[Controller] Throttle: %.1f"%(self.throttle))
             if event.code == 'ABS_RZ': # RT
                 self.throttle = -1.0*event.state/255.0;
                 if DEBUG: print("[Controller] Throttle: %.2f"%(self.throttle))

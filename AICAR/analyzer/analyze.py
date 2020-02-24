@@ -3,23 +3,9 @@ import cv2
 import glob
 import copy
 import uuid
+from .utils import *
 
 default_dataset_dir = os.getcwd()+'/../road_following_A/apex/'
-
-def get_files_list(dataset_dir):
-    files = []
-    '''
-    for r,d,f in os.walk(dataset_dir):
-        for fname in f:
-            if '.jpg' in fname:
-                files.append(os.path.abspath(os.path.join(r, fname)))
-    '''
-
-    files = glob.glob(dataset_dir+"*.jpg")
-    if len(files) == 0:
-        print("Could not locate files in dataset dir: %s"%(dataset_dir))
-    files.sort(key=os.path.getmtime)
-    return files
 
 refPt = [0,0]
 def click_and_save(event, x, y, flags, param):
@@ -59,13 +45,6 @@ def render_file(fname):
                                           (0,255,0), 1)
     image_overlay = cv2.line(image_overlay, (int(w/2),0), (int(w/2),h), (0,255,0), 1)
     cv2.imshow("Analyze dataset", image_overlay)
-    k = cv2.waitKey(0) & 0xFF
-    if(k == 27):
-        exit(1)
-    elif k == 83:
-        return
-    elif(k == ord('d')):
-        os.system('rm %s'%(fname))
 
 dataset_dir = ''
 fname = ''
@@ -75,13 +54,41 @@ def analyze_dataset(dataset_dir_in):
     global dataset_dir, fname
     dataset_dir = dataset_dir_in
     flist = get_files_list(dataset_dir)
-    for f in flist:
+    count = 0
+    while count < len(flist) and count >= 0:
+        f = flist[count]
+        if(not os.path.exists(f)):
+            count += 1
+            continue
         fname = f
         print(f)
         render_file(f)
+        k = cv2.waitKey(0) & 0xFF
+        if(k == 27):
+            exit(1)
+        elif k == 83:
+            count += 1
+        elif k == 81:
+            count -= 1
+        elif(k == ord('d')):
+            os.system('rm %s'%(fname))
+            print('rm %s'%(fname))
+            count += 1
 
 if __name__ == '__main__':
     flist = get_files_list(default_dataset_dir)
-    for f in flist:
-        render_file(f)
+    count = 0
+    while count < len(flist) and count >= 0:
+        f = flist[count]
         print(f)
+        render_file(f)
+        k = cv2.waitKey(0) & 0xFF
+        if(k == 27):
+            exit(1)
+        elif k == 83:
+            count += 1
+        elif k == 81:
+            count -= 1
+        elif(k == ord('d')):
+            os.system('rm %s'%(fname))
+            print('rm %s'%(fname))

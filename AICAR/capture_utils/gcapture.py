@@ -88,7 +88,12 @@ class JCamera:
             self.image_overlay = copy.copy(self.image)
             self.image_overlay = cv2.circle(self.image_overlay, (x, y), 8, (0, 255, 0), 3)
             cv2.imshow("CSI Camera feed", self.image_overlay)
-            self.save_entry()
+            self.save_entry(x,y)
+
+    def unity_to_image(self, x, y):
+        x1 = int(self.width * (x + 1.0)/2.0)
+        y1 = int(self.height * (y + 1.0)/2.0)
+        return x1, y1
 
     def getFrame(self):
         ret, self.image = self.camera.read()
@@ -111,11 +116,11 @@ class JCamera:
     def release(self):
         return self.stop()
 
-    def save_entry(self):
+    def save_entry(self, x, y):
         if not os.path.exists(self.dataset_dir):
             subprocess.call(['mkdir', '-p', self.dataset_dir])
     
-        filename = '%d_%d_%s.jpg' % (self.x, self.y, str(uuid.uuid1()))
+        filename = '%d_%d_%s.jpg' % (x, y, str(uuid.uuid1()))
     
         image_path = os.path.join(self.dataset_dir, filename)
         cv2.imwrite(image_path, self.image)
