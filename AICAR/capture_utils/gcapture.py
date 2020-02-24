@@ -68,6 +68,7 @@ class JCamera:
             if ret == True and self.render:
                 h,w,c = self.image.shape
                 self.image = cv2.line(self.image, (0,int(h/2)), (w,int(h/2)), (0,255,0), 1)
+                self.image = cv2.line(self.image, (int(w/2),0), (int(w/2),h), (0,255,0), 1)
                 cv2.imshow("CSI Camera feed", self.image)
 
             if self.handle_keys:
@@ -96,6 +97,7 @@ class JCamera:
             self.image_overlay = copy.copy(self.image)
             self.image_overlay = cv2.line(self.image_overlay, (0,int(h/2)), (w,int(h/2)),
                                           (0,255,0), 1)
+            self.image_overlay = cv2.line(self.image_overlay, (int(w/2),0), (int(w/2),h), (0,255,0), 1)
             cv2.imshow("CSI Camera feed", self.image_overlay)
         return ret, self.image
 

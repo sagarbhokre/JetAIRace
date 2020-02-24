@@ -1,21 +1,69 @@
 from inputs import get_gamepad
 import threading
 import time
+import ctypes
 
 DEBUG = 0
 class JController(threading.Thread):
-    def __init__(self):
+    def __init__(self, enable_prints=True):
         self.steering = 0.0
         self.speed = 0.0
         self.throttle = 0.0
-        self.engage_motors = False
+        self.manual_mode = False
+        self.run_mode = False
+        self.create_dataset_mode = False
+        self.start_live_train = False
         self.quit = False
+        self.killFlag = False
         self.override = False
+        self.pauseFlag = False
+        self.saveModelFlag = False
+        self.enable_prints = enable_prints
         threading.Thread.__init__(self)
 
+    def pause(self):
+        print("Pause controller")
+        self.pauseFlag = True
+
+    def resume(self):
+        print("Resume controller")
+        self.pauseFlag = False
+
+    def restart(self):
+        threading.Thread.__init__(self)
+        self.quit = False
+        self.start()
+
+    def kill(self):
+        self.killFlag = True
+
     def run(self):
-        while self.quit == False:
-            self.handle_gamepad_events()
+        try:
+            while self.killFlag == False:
+                if self.pauseFlag == True:
+                    print("Controller thread sleep")
+                    time.sleep(1)
+                    continue
+                self.handle_gamepad_events()
+        finally:
+            print("Controller thread ended----------------")
+
+    def get_id(self):
+
+        # returns id of the respective thread
+        if hasattr(self, '_thread_id'):
+            return self._thread_id
+        for id, thread in threading._active.items():
+            if thread is self:
+                return id
+
+    def raise_exception(self):
+        thread_id = self.get_id()
+        res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id,
+              ctypes.py_object(SystemExit))
+        if res > 1:
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
+            print('Exception raise failure')
 
     def handle_gamepad_events(self):
         events = get_gamepad()
@@ -38,22 +86,34 @@ class JController(threading.Thread):
                 self.throttle = event.state/255.0;
                 if DEBUG: print("[Controller] Throttle: %.2f"%(self.throttle))
             if event.code == 'BTN_SOUTH': # Green button 'A'
-                self.engage_motors = True
-                print("[Controller] Engaging motors")
+                self.manual_mode = False
+                print("[Controller] Autonomous mode")
             if event.code == 'BTN_EAST': # Red button 'B'
-                self.engage_motors = False
-                print("[Controller] Disengaging motors")
+                self.manual_mode = True
+                print("[Controller] Manual mode")
+            if event.code == 'BTN_NORTH': # Red button 'Y'
+                self.run_mode = True
+                print("[Controller] Run AI")
+            if event.code == 'BTN_WEST': # Red button 'Y'
+                self.create_dataset_mode = True
+                print("[Controller] Create Dataset")
+            if event.code == 'BTN_TL': # LB button
+                self.start_live_train = True
+                print("[Controller] Start live train btn")
+            if event.code == 'BTN_TR': # RB button
+                self.saveModelFlag = True
+                print("[Controller] Save model trigger")
             if event.code == 'BTN_SELECT': # Back button
                 self.quit = True
                 print("[Controller] Quit")
 
-        if abs(self.steering) > 0.001 or self.throttle > 0.01:
+        if abs(self.steering) > 0.01 or abs(self.throttle) > 0.01:
             self.override = True
 
         return True
 
     def control_car(self, car):
-        if self.engage_motors:
+        if self.manual_mode:
             car.steering = self.steering
             car.throttle = self.throttle
 

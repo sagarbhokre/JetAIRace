@@ -39,7 +39,7 @@ class JCar:
     
         if(k != 255):
             self.car.throttle = 0.0
-            print("S: %.2f T: %.2f"%(self.steering_offset, self.throttle_offset))
+            #print("S: %.2f T: %.2f"%(self.steering_offset, self.throttle_offset))
     
         return True
     

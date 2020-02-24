@@ -22,7 +22,7 @@ class JInfer:
 
         DATASETS = ['A', 'B']
 
-        TRANSFORMS = transforms.Compose([
+        self.TRANSFORMS = transforms.Compose([
             transforms.ColorJitter(0.2, 0.2, 0.2, 0.2),
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
@@ -31,7 +31,7 @@ class JInfer:
 
         datasets = {}
         for name in DATASETS:
-            datasets[name] = XYDataset(TASK + '_' + name, CATEGORIES, TRANSFORMS, random_hflip=True)
+            datasets[name] = XYDataset(TASK + '_' + name, CATEGORIES, self.TRANSFORMS, random_hflip=True)
 
         self.dataset = datasets[DATASETS[0]]
 
@@ -79,12 +79,59 @@ class JInfer:
                 break
 
 
-    def runFrame(self, image):
+    def trainFrame(self, image, xt, yt, renderFlag=False):
+
         preprocessed = self.preprocess(image)
         output = self.model(preprocessed).detach().cpu().numpy().flatten()
         category_index = self.dataset.categories.index('apex')
         x = float(output[2 * category_index])
         y = float(output[2 * category_index + 1])
+        if renderFlag:
+            self.render(image, x, y)
+
+        self.model = self.model.train()
+        xy = [xt, yt]
+
+        self.images = preprocessed
+        #self.TRANSFORMS(PIL.Image.fromarray(image)).to(self.device)
+        #self.xy = xy.to(self.device)
+        self.xy = torch.Tensor([xt, yt]).to(self.device)
+
+        # zero gradients of parameters
+        self.optimizer.zero_grad()
+
+        # execute model to get outputs
+        outputs = self.model(self.images)
+
+        #print(outputs)
+        # compute MSE loss over x, y coordinates for associated categories
+        loss = torch.mean((outputs[0][0:2] - self.xy)**2)
+        #import pdb; pdb.set_trace()
+
+        # run backpropogation to accumulate gradients
+        loss.backward()
+
+        # step optimizer to adjust parameters
+        self.optimizer.step()
+
+        # increment progress
+        int_loss = float(loss)
+
+        print("loss: ", int_loss)
+        return x,y
+
+
+    def runFrame(self, image, renderFlag=False):
+        preprocessed = self.preprocess(image)
+        output = self.model(preprocessed).detach().cpu().numpy().flatten()
+        category_index = self.dataset.categories.index('apex')
+        x = float(output[2 * category_index])
+        y = float(output[2 * category_index + 1])
+        if renderFlag:
+            self.render(image, x, y)
+
+        x = x if x < 1.0 else 1.0
+        x = x if x > -1.0 else -1.0
 
         return x,y
 
@@ -125,7 +172,7 @@ class JInfer:
                 shuffle=True
             )
 
-            time.sleep(1)
+            #time.sleep(1)
 
             if is_training:
                 self.model = self.model.train()
