@@ -2,16 +2,17 @@ import cv2
 import copy
 
 class JTouchSensor:
-    def __init__(self, enable_prints=False):
+    def __init__(self, enable_prints=False, enable_render=False):
         self.enable_prints = enable_prints
         self.img = cv2.imread('/home/jetson/JetAIRace/AICAR/manual_control/Touch_BG.png')
-        cv2.namedWindow("Touch Controller")
-        cv2.setMouseCallback("Touch Controller", self.click_and_save)
-        cv2.setWindowProperty("Touch Controller", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-        self.img = cv2.resize(self.img, (1080, 340))
-        self.h,self.w,self.c = self.img.shape
-        cv2.moveWindow("Touch Controller", 0, -10);
-        cv2.imshow("Touch Controller", self.img)
+        if enable_render:
+            cv2.namedWindow("Touch Controller")
+            cv2.setMouseCallback("Touch Controller", self.click_and_save)
+            cv2.setWindowProperty("Touch Controller", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+            self.img = cv2.resize(self.img, (1080, 340))
+            self.h,self.w,self.c = self.img.shape
+            cv2.moveWindow("Touch Controller", 0, -10);
+            cv2.imshow("Touch Controller", self.img)
         self.xc = 0
         self.yc = 0
 

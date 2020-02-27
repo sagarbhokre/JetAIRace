@@ -15,6 +15,7 @@ ENABLE_PROFILING_PRINTS = False
 SPEED_LIMIT=0.6
 INFER_MODEL_PATH='models/trained_v3.pth'
 LIVEINFER_MODEL_PATH='models/livetrained_v1.pth'
+SMOOTHEN = False
 
 def cleanup(car):
     car.control(0.0, 0.0)
@@ -50,12 +51,18 @@ if __name__ == '__main__':
         enable_prints = False
         curr_time = time.time()
         prev_time = time.time()
+        #prev_x = 0.0
         while True:
             ret, img = camera.read()
             x,y = infer.runFrame(img, renderFlag=args.render)
             if controller.manual_mode:
                 car.control(controller.steering, controller.throttle*0.5)
             else:
+                if SMOOTHEN:
+                    x = cap(x)
+                    x = 1.0*x*x if x > 0.0 else -1.0*x*x 
+                    #x = (x + prev_x) / 2
+                    #prev_x = x
                 car.control(x, speed)
             #infer.render(img, x, y)
             if enable_prints:
@@ -135,6 +142,8 @@ if __name__ == '__main__':
         discrete_control = False
         while True:
             if controller.manual_mode == True:
+                if controller.quit == True:
+                    break
                 car.control(controller.steering, controller.throttle)
                 #car.control(touchSensor.xc, touchSensor.yc * 0.4)
             else:
@@ -149,24 +158,34 @@ if __name__ == '__main__':
                     print("S: %.3f T: %.3f"%(x1, speed))
                     infer.trainFrame(img, x1, controller.throttle)
                 if True:
-                    xm = x + kb_angle + c_angle
+                    xm = cap(x + kb_angle + c_angle)
                     ym = speed #+ touchSensor.yc * 0.2
                     if abs(controller.steering_discrete) > 0.0001:
-                        c_angle += (controller.steering_discrete * 0.33)
+                        c_angle += (controller.steering_discrete * 0.23)
                         controller.steering_discrete = 0.0
-                        x2, y2 = camera.unity_to_image(xm, ym)
-                        camera.save_entry(x2, y2)
+                        #x2, y2 = camera.unity_to_image(xm, ym)
+                        #camera.save_entry(x2, y2)
+
+                    xs, ys = camera.unity_to_image(xm, ym)
+                    camera.save_entry(xs, ys)
+
+                    #if SMOOTHEN:
+                    #    xm = cap(xm)
+                    #    xm = 1.0*xm*xm if x > 0.0 else -1.0*xm*xm 
 
                     if discrete_control:
                         car.control(xm, 0)
                     else:
                         car.control(xm, ym)
 
-                    if abs(x - xm) >= 0.33:
+                    while abs(x - xm) >= 0.23:
+                        print("x: %.3f xm: %.3f"%(x, xm))
                         car.control(xm, 0)
                         infer.trainFrame(img, xm, ym)
-                        car.control(xm, ym)
                         c_angle = 0.0
+                        x,y = infer.runFrame(img, renderFlag=args.render)
+
+                    car.control(xm, ym)
                     #print("S: %.3f T: %.3f"%(x1, y1))
                 else:
                     car.control(x, speed)
@@ -204,12 +223,12 @@ if __name__ == '__main__':
                 camera.save_entry(x2, y2)
 
             if abs(controller.speed) >= 0.0001:
-                speed += controller.speed * 0.02
+                speed += controller.speed * 0.01
                 controller.speed = 0.0
                 print("Speed: %.2f"%(speed))
             if controller.saveModelFlag:
                 controller.saveModelFlag = False
-                infer.save_model(LIVEINFER_MODEL_PATH)
+                infer.save_model('models/livetraining_v2.pth')
 
             speed = speed if speed < SPEED_LIMIT else SPEED_LIMIT
             speed = speed if speed > -SPEED_LIMIT else -SPEED_LIMIT
